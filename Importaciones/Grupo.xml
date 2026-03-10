@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Grupos>
+    <Grupo>
+        <cveGru>GSI0511</cveGru>
+        <nomGru>Aguilas</nomGru>
+    </Grupo>
+    <Grupo>
+        <cveGru>GSI0522</cveGru>
+        <nomGru>Chivas</nomGru>
+    </Grupo>
+    <Grupo>
+        <cveGru>GSI0533</cveGru>
+        <nomGru>Pumas</nomGru>
+    </Grupo>
+</Grupos>
