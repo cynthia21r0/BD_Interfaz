@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import sys
 import os
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,55 +16,219 @@ from Grupo.Importar import importar_csv, importar_json, importar_xml
 from db.conexion import get_collection
 
 
+# ── Paleta de colores ────────────────────────────────────────────
+BG          = "#F7F6F3"
+SURFACE     = "#FFFFFF"
+BORDER      = "#E2DFD8"
+TEXT_PRI    = "#2C2C2A"
+TEXT_SEC    = "#5F5E5A"
+ACCENT      = "#1D9E75"        # teal-400
+ACCENT_HOV  = "#0F6E56"        # teal-600
+ACCENT_LITE = "#E1F5EE"        # teal-50
+DANGER      = "#E24B4A"
+DANGER_HOV  = "#A32D2D"
+NEUTRAL     = "#888780"        # gray-400
+BTN_BORDER  = "#B4B2A9"        # gray-200
+
+FONT_HEAD   = ("Segoe UI", 11, "bold")
+FONT_LABEL  = ("Segoe UI", 9)
+FONT_ENTRY  = ("Segoe UI", 10)
+FONT_BTN    = ("Segoe UI", 9)
+FONT_TITLE  = ("Segoe UI", 13, "bold")
+
+# Regex: sólo letras (incluye acentos/ñ), dígitos, espacios y guiones
+VALID_CLAVE  = re.compile(r'^[A-Za-z0-9\-_]{1,20}$')
+VALID_NOMBRE = re.compile(r'^[A-Za-záéíóúÁÉÍÓÚñÑ0-9 \-_.,()]{1,80}$')
+
+
 class AdmonGrupo:
     def __init__(self, root):
         self.root = root
-        self.root.title("Admon Grupo")
+        self.root.title("Administración de Grupos")
         self.root.resizable(False, False)
-        self.root.configure(bg="#f0f4e8")
+        self.root.configure(bg=BG)
 
         self.collection = get_collection("BD_GrupoAlumno", "Grupo")
-
         self._build_ui()
 
+    # ─────────────────────────── UI ─────────────────────────────
     def _build_ui(self):
-        pad = {"padx": 6, "pady": 4}
+        outer = tk.Frame(self.root, bg=BG, padx=20, pady=18)
+        outer.pack(fill="both", expand=True)
 
-        # --- Clave ---
-        tk.Label(self.root, text="Clave:", bg="#f0f4e8").grid(row=0, column=0, sticky="e", **pad)
-        self.entry_clave = tk.Entry(self.root, width=28)
-        self.entry_clave.grid(row=0, column=1, columnspan=2, sticky="w", **pad)
+        # ── Título ──────────────────────────────────────────────
+        title_frame = tk.Frame(outer, bg=ACCENT_LITE, padx=12, pady=8,
+                               relief="flat", bd=0)
+        title_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 16))
+        tk.Label(title_frame, text="Grupos", font=FONT_TITLE,
+                 bg=ACCENT_LITE, fg=ACCENT_HOV).pack(side="left")
+        self.lbl_count = tk.Label(title_frame, text="", font=FONT_LABEL,
+                                  bg=ACCENT_LITE, fg=TEXT_SEC)
+        self.lbl_count.pack(side="right")
+        self._actualizar_contador()
 
-        tk.Button(self.root, text="Buscar", width=12, command=self.buscar).grid(row=0, column=3, **pad)
+        # ── Card principal ───────────────────────────────────────
+        card = tk.Frame(outer, bg=SURFACE, padx=16, pady=14,
+                        relief="solid", bd=1, highlightthickness=0)
+        card.configure(highlightbackground=BORDER)
+        card.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        # --- Nombre ---
-        tk.Label(self.root, text="Nombre:", bg="#f0f4e8").grid(row=1, column=0, sticky="e", **pad)
-        self.entry_nombre = tk.Entry(self.root, width=28)
-        self.entry_nombre.grid(row=1, column=1, columnspan=2, sticky="w", **pad)
+        # Clave
+        tk.Label(card, text="Clave", font=FONT_LABEL, bg=SURFACE,
+                 fg=TEXT_SEC).grid(row=0, column=0, sticky="w", pady=(0, 2))
+        entry_row = tk.Frame(card, bg=SURFACE)
+        entry_row.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        self.entry_clave = tk.Entry(entry_row, font=FONT_ENTRY, width=22,
+                                    bg=SURFACE, fg=TEXT_PRI,
+                                    relief="solid", bd=1,
+                                    highlightthickness=1,
+                                    highlightbackground=BORDER,
+                                    highlightcolor=ACCENT,
+                                    insertbackground=TEXT_PRI)
+        self.entry_clave.pack(side="left")
+        self._btn(entry_row, "Buscar", self.buscar,
+                  color=ACCENT, hover=ACCENT_HOV).pack(side="left", padx=(8, 0))
 
-        tk.Button(self.root, text="Limpiar", width=12, command=self.limpiar).grid(row=1, column=3, **pad)
+        # Nombre
+        tk.Label(card, text="Nombre", font=FONT_LABEL, bg=SURFACE,
+                 fg=TEXT_SEC).grid(row=2, column=0, sticky="w", pady=(0, 2))
+        nombre_row = tk.Frame(card, bg=SURFACE)
+        nombre_row.grid(row=3, column=0, sticky="ew", pady=(0, 2))
+        self.entry_nombre = tk.Entry(nombre_row, font=FONT_ENTRY, width=22,
+                                     bg=SURFACE, fg=TEXT_PRI,
+                                     relief="solid", bd=1,
+                                     highlightthickness=1,
+                                     highlightbackground=BORDER,
+                                     highlightcolor=ACCENT,
+                                     insertbackground=TEXT_PRI)
+        self.entry_nombre.pack(side="left")
+        self._btn(nombre_row, "Limpiar", self.limpiar,
+                  color=NEUTRAL, hover="#444441").pack(side="left", padx=(8, 0))
 
-        # --- Agregar / Modificar / Eliminar ---
-        tk.Button(self.root, text="Agregar", width=12, command=self.agregar).grid(row=2, column=0, **pad)
-        tk.Button(self.root, text="Modificar", width=12, command=self.modificar).grid(row=2, column=1, **pad)
-        tk.Button(self.root, text="Eliminar", width=12, command=self.eliminar).grid(row=2, column=3, **pad)
+        # ── CRUD ─────────────────────────────────────────────────
+        crud = tk.Frame(outer, bg=BG)
+        crud.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(14, 0))
+        crud.columnconfigure((0, 1, 2), weight=1)
+        self._btn(crud, "Agregar",   self.agregar,   color=ACCENT,  hover=ACCENT_HOV, fill=True).grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        self._btn(crud, "Modificar", self.modificar, color=NEUTRAL, hover="#444441",  fill=True).grid(row=0, column=1, padx=5,      sticky="ew")
+        self._btn(crud, "Eliminar",  self.eliminar,  color=DANGER,  hover=DANGER_HOV, fill=True).grid(row=0, column=2, padx=(5, 0), sticky="ew")
 
-        # --- Exportar ---
-        tk.Button(self.root, text="Exportar csv", width=12, command=lambda: exportar_csv(self.collection)).grid(row=3, column=0, **pad)
-        tk.Button(self.root, text="Exportar json", width=12, command=lambda: exportar_json(self.collection)).grid(row=3, column=1, **pad)
-        tk.Button(self.root, text="Exportar xml", width=12, command=lambda: exportar_xml(self.collection)).grid(row=3, column=3, **pad)
+        # ── Separador ────────────────────────────────────────────
+        self._sep(outer, row=3)
 
-        # --- Importar ---
-        tk.Button(self.root, text="Importar csv", width=12, command=lambda: importar_csv(self.collection)).grid(row=4, column=0, **pad)
-        tk.Button(self.root, text="Importar json", width=12, command=lambda: importar_json(self.collection)).grid(row=4, column=1, **pad)
-        tk.Button(self.root, text="Importar xml", width=12, command=lambda: importar_xml(self.collection)).grid(row=4, column=3, **pad)
+        # ── Exportar / Importar ──────────────────────────────────
+        tk.Label(outer, text="EXPORTAR", font=("Segoe UI", 8),
+                 bg=BG, fg=TEXT_SEC).grid(row=4, column=0, sticky="w", pady=(10, 4))
+        exp_frame = tk.Frame(outer, bg=BG)
+        exp_frame.grid(row=5, column=0, columnspan=2, sticky="ew")
+        exp_frame.columnconfigure((0, 1, 2), weight=1)
+        for i, (lbl, fn) in enumerate([
+            ("CSV",  lambda: exportar_csv(self.collection)),
+            ("JSON", lambda: exportar_json(self.collection)),
+            ("XML",  lambda: exportar_xml(self.collection)),
+        ]):
+            self._btn(exp_frame, lbl, fn, color=NEUTRAL, hover="#444441",
+                      fill=True).grid(row=0, column=i, padx=(0 if i == 0 else 5, 5 if i < 2 else 0), sticky="ew")
 
-        # --- Backup / Eliminar todos / Restaurar todos ---
-        tk.Button(self.root, text="Ejecutar Backup", width=48, command=lambda: ejecutar_backup(self.collection)).grid(row=5, column=0, columnspan=4, **pad)
-        tk.Button(self.root, text="Eliminar todos los Grupos", width=48, command=self.eliminar_todos).grid(row=6, column=0, columnspan=4, **pad)
-        tk.Button(self.root, text="Restaurar todos los Grupos", width=48, command=self.restaurar_todos).grid(row=7, column=0, columnspan=4, **pad)
+        tk.Label(outer, text="IMPORTAR", font=("Segoe UI", 8),
+                 bg=BG, fg=TEXT_SEC).grid(row=6, column=0, sticky="w", pady=(12, 4))
+        imp_frame = tk.Frame(outer, bg=BG)
+        imp_frame.grid(row=7, column=0, columnspan=2, sticky="ew")
+        imp_frame.columnconfigure((0, 1, 2), weight=1)
+        for i, (lbl, fn) in enumerate([
+            ("CSV",  lambda: importar_csv(self.collection)),
+            ("JSON", lambda: importar_json(self.collection)),
+            ("XML",  lambda: importar_xml(self.collection)),
+        ]):
+            self._btn(imp_frame, lbl, fn, color=NEUTRAL, hover="#444441",
+                      fill=True).grid(row=0, column=i, padx=(0 if i == 0 else 5, 5 if i < 2 else 0), sticky="ew")
 
-    # ------------------------------------------------------------------ helpers
+        # ── Separador ────────────────────────────────────────────
+        self._sep(outer, row=8)
+
+        # ── Backup / Restaurar / Eliminar todos ──────────────────
+        ops = tk.Frame(outer, bg=BG)
+        ops.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        ops.columnconfigure(0, weight=1)
+
+        self._btn(ops, "Ejecutar Backup",
+                  lambda: self._backup_con_validacion(),
+                  color="#185FA5", hover="#0C447C", fill=True).grid(
+                      row=0, column=0, sticky="ew", pady=(0, 6))
+
+        self._btn(ops, "Eliminar todos los Grupos",
+                  self.eliminar_todos,
+                  color=DANGER, hover=DANGER_HOV, fill=True).grid(
+                      row=1, column=0, sticky="ew", pady=(0, 6))
+
+        self._btn(ops, "Restaurar todos los Grupos",
+                  self.restaurar_todos,
+                  color=NEUTRAL, hover="#444441", fill=True).grid(
+                      row=2, column=0, sticky="ew")
+
+        outer.columnconfigure(0, weight=1)
+
+    # ─────────────────────────── Widget helpers ──────────────────
+    def _btn(self, parent, text, command, color=NEUTRAL, hover="#444441",
+             fill=False):
+        """Botón plano con hover y bordes redondeados simulados."""
+        btn = tk.Button(parent, text=text, font=FONT_BTN,
+                        fg=color, bg=SURFACE if not fill else BG,
+                        activeforeground=hover,
+                        activebackground=BORDER,
+                        relief="solid", bd=1,
+                        highlightthickness=0,
+                        cursor="hand2",
+                        pady=5, padx=10,
+                        command=command)
+        btn.bind("<Enter>", lambda e: btn.configure(fg=hover, bg=BORDER))
+        btn.bind("<Leave>", lambda e: btn.configure(fg=color, bg=SURFACE if not fill else BG))
+        return btn
+
+    def _sep(self, parent, row):
+        sep = tk.Frame(parent, height=1, bg=BORDER)
+        sep.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+
+    def _actualizar_contador(self):
+        try:
+            n = self.collection.count_documents({})
+            self.lbl_count.configure(text=f"{n} grupo{'s' if n != 1 else ''}")
+        except Exception:
+            self.lbl_count.configure(text="")
+
+    # ─────────────────────────── Validaciones ────────────────────
+    def _validar_clave(self, clave: str) -> bool:
+        """Valida que la clave no esté vacía y solo tenga caracteres permitidos."""
+        if not clave:
+            messagebox.showwarning("Validación", "La Clave no puede estar vacía.")
+            return False
+        if not VALID_CLAVE.match(clave):
+            messagebox.showwarning(
+                "Validación",
+                "La Clave solo puede contener letras, números, guiones y guiones\n"
+                "bajos, sin espacios, y un máximo de 20 caracteres.\n\n"
+                f"Valor ingresado: '{clave}'"
+            )
+            return False
+        return True
+
+    def _validar_nombre(self, nombre: str) -> bool:
+        """Valida que el nombre no esté vacío y solo tenga caracteres permitidos."""
+        if not nombre:
+            messagebox.showwarning("Validación", "El Nombre no puede estar vacío.")
+            return False
+        if not VALID_NOMBRE.match(nombre):
+            messagebox.showwarning(
+                "Validación",
+                "El Nombre contiene caracteres no válidos o supera 80 caracteres.\n"
+                "Se permiten: letras (incluyendo acentos y ñ), números, espacios,\n"
+                "guiones, puntos, comas y paréntesis.\n\n"
+                f"Valor ingresado: '{nombre}'"
+            )
+            return False
+        return True
+
+    # ─────────────────────────── Helpers ─────────────────────────
     def _get_clave(self):
         return self.entry_clave.get().strip()
 
@@ -73,75 +238,101 @@ class AdmonGrupo:
     def limpiar(self):
         self.entry_clave.delete(0, tk.END)
         self.entry_nombre.delete(0, tk.END)
+        self.entry_clave.focus()
 
-    # ------------------------------------------------------------------ CRUD
+    # ─────────────────────────── CRUD ────────────────────────────
     def buscar(self):
         clave = self._get_clave()
-        if not clave:
-            messagebox.showwarning("Buscar", "Ingrese una Clave para buscar.")
+        if not self._validar_clave(clave):
             return
         doc = self.collection.find_one({"cveGru": clave})
         if doc:
             self.entry_nombre.delete(0, tk.END)
             self.entry_nombre.insert(0, doc["nomGru"])
-            messagebox.showinfo("Buscar", f"Grupo encontrado:\nClave: {doc['cveGru']}\nNombre: {doc['nomGru']}")
+            messagebox.showinfo("Buscar",
+                f"Grupo encontrado:\nClave: {doc['cveGru']}\nNombre: {doc['nomGru']}")
         else:
-            messagebox.showwarning("Buscar", f"No se encontró ningún grupo con clave '{clave}'.")
+            messagebox.showwarning("Buscar",
+                f"No se encontró ningún grupo con clave '{clave}'.")
 
     def agregar(self):
-        clave = self._get_clave()
+        clave  = self._get_clave()
         nombre = self._get_nombre()
-        if not clave or not nombre:
-            messagebox.showwarning("Agregar", "Ingrese Clave y Nombre.")
+        if not self._validar_clave(clave):
             return
-        resultado = agregar_grupo(self.collection, clave, nombre)
-        if resultado:
+        if not self._validar_nombre(nombre):
+            return
+        if agregar_grupo(self.collection, clave, nombre):
             messagebox.showinfo("Agregar", f"Grupo '{clave}' agregado correctamente.")
             self.limpiar()
+            self._actualizar_contador()
         else:
             messagebox.showerror("Agregar", f"Ya existe un grupo con clave '{clave}'.")
 
     def modificar(self):
-        clave = self._get_clave()
+        clave  = self._get_clave()
         nombre = self._get_nombre()
-        if not clave or not nombre:
-            messagebox.showwarning("Modificar", "Ingrese Clave y nuevo Nombre.")
+        if not self._validar_clave(clave):
             return
-        resultado = modificar_grupo(self.collection, clave, nombre)
-        if resultado:
+        if not self._validar_nombre(nombre):
+            return
+        if modificar_grupo(self.collection, clave, nombre):
             messagebox.showinfo("Modificar", f"Grupo '{clave}' modificado correctamente.")
             self.limpiar()
         else:
-            messagebox.showerror("Modificar", f"No se encontró ningún grupo con clave '{clave}'.")
+            messagebox.showerror("Modificar",
+                f"No se encontró ningún grupo con clave '{clave}'.")
 
     def eliminar(self):
         clave = self._get_clave()
-        if not clave:
-            messagebox.showwarning("Eliminar", "Ingrese una Clave para eliminar.")
+        if not self._validar_clave(clave):
             return
-        confirmar = messagebox.askyesno("Eliminar", f"¿Desea eliminar el grupo '{clave}'?")
-        if confirmar:
-            resultado = eliminar_grupo(self.collection, clave)
-            if resultado:
-                messagebox.showinfo("Eliminar", f"Grupo '{clave}' eliminado correctamente.")
+        if messagebox.askyesno("Eliminar", f"¿Desea eliminar el grupo '{clave}'?"):
+            if eliminar_grupo(self.collection, clave):
+                messagebox.showinfo("Eliminar",
+                    f"Grupo '{clave}' eliminado correctamente.")
                 self.limpiar()
+                self._actualizar_contador()
             else:
-                messagebox.showerror("Eliminar", f"No se encontró ningún grupo con clave '{clave}'.")
+                messagebox.showerror("Eliminar",
+                    f"No se encontró ningún grupo con clave '{clave}'.")
 
     def eliminar_todos(self):
-        confirmar = messagebox.askyesno("Eliminar todos", "¿Está seguro de eliminar TODOS los grupos?\nEsta acción no se puede deshacer.")
-        if confirmar:
+        # Validar que haya datos antes de proceder
+        n = self.collection.count_documents({})
+        if n == 0:
+            messagebox.showwarning("Eliminar todos",
+                "No hay grupos para eliminar.")
+            return
+        if messagebox.askyesno("Eliminar todos",
+                f"¿Está seguro de eliminar los {n} grupos?\n"
+                "Esta acción no se puede deshacer."):
             eliminar_todos(self.collection)
-            messagebox.showinfo("Eliminar todos", "Todos los grupos han sido eliminados.")
+            messagebox.showinfo("Eliminar todos",
+                "Todos los grupos han sido eliminados.")
+            self._actualizar_contador()
 
     def restaurar_todos(self):
-        confirmar = messagebox.askyesno("Restaurar todos", "¿Desea restaurar todos los grupos desde el backup?")
-        if confirmar:
+        if messagebox.askyesno("Restaurar todos",
+                "¿Desea restaurar todos los grupos desde el backup?"):
             ok = restaurar_todos(self.collection)
             if ok:
-                messagebox.showinfo("Restaurar todos", "Grupos restaurados correctamente.")
+                messagebox.showinfo("Restaurar todos",
+                    "Grupos restaurados correctamente.")
+                self._actualizar_contador()
             else:
-                messagebox.showerror("Restaurar todos", "No se encontró archivo de backup para restaurar.")
+                messagebox.showerror("Restaurar todos",
+                    "No se encontró archivo de backup para restaurar.")
+
+    # ── Backup con validación de colección no vacía ───────────────
+    def _backup_con_validacion(self):
+        n = self.collection.count_documents({})
+        if n == 0:
+            messagebox.showwarning("Ejecutar Backup",
+                "No hay datos en la colección.\n"
+                "El backup solo puede realizarse cuando existan grupos registrados.")
+            return
+        ejecutar_backup(self.collection)
 
 
 if __name__ == "__main__":
