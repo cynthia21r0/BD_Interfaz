@@ -1,35 +1,46 @@
-"""
-EjeBackup.py – Genera un backup de la colección Grupo en formato JSON.
-El archivo se guarda como  backup_Grupo.json  en el directorio de trabajo.
-"""
-
-import json
+import subprocess
 import os
-from datetime import datetime
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 
-BACKUP_FILE = "backup_Grupo.json"
+MONGODUMP_PATH = r"C:\Program Files\MongoDB\Tools\100\bin\mongodump.exe"
+DB_NAME = "BD_GrupoAlumno"
 
 
-def ejecutar_backup(collection) -> None:
+def ejecutar_backup(collection=None) -> None:
     """
-    Exporta todos los documentos de la colección a un archivo JSON de backup.
-    Muestra ventana emergente con el resultado.
+    Pide al usuario la carpeta destino y ejecuta mongodump.
     """
-    docs = list(collection.find({}, {"_id": 0}))
+    carpeta = filedialog.askdirectory(title="Selecciona carpeta destino del Backup")
+    if not carpeta:
+        return
 
-    data = {
-        "fecha_backup": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total": len(docs),
-        "grupos": docs
-    }
+    carpeta = os.path.normpath(carpeta)
 
-    ruta = os.path.abspath(BACKUP_FILE)
-    with open(ruta, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    cmd = [
+        MONGODUMP_PATH,
+        f"--db={DB_NAME}",
+        f"--out={carpeta}"
+    ]
 
-    messagebox.showinfo(
-        "Backup",
-        f"Backup ejecutado correctamente.\n{len(docs)} registro(s) guardados en:\n{ruta}"
-    )
+    try:
+        resultado = subprocess.run(cmd, capture_output=True, text=True)
+
+        if resultado.returncode == 0:
+            ruta_final = os.path.join(carpeta, DB_NAME)
+            messagebox.showinfo(
+                "Backup",
+                f"Backup ejecutado correctamente.\n\nGuardado en:\n{ruta_final}"
+            )
+        else:
+            messagebox.showerror(
+                "Backup - Error",
+                f"mongodump falló:\n\n{resultado.stderr}"
+            )
+
+    except FileNotFoundError:
+        messagebox.showerror(
+            "Backup - Error",
+            f"No se encontró mongodump en:\n{MONGODUMP_PATH}\n\n"
+            "Verifica la ruta en EjeBackup.py"
+        )

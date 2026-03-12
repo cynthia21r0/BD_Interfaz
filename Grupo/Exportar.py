@@ -1,8 +1,3 @@
-"""
-Exportar.py – Exporta la colección Grupo a CSV, JSON o XML.
-Muestra un diálogo para elegir la ruta de guardado y notifica el resultado.
-"""
-
 import csv
 import json
 import os

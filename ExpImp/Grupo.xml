@@ -12,4 +12,8 @@
         <cveGru>GSI0533</cveGru>
         <nomGru>Pumas</nomGru>
     </Grupo>
+    <Grupo>
+        <cveGru>GIDS6081</cveGru>
+        <nomGru>Software</nomGru>
+    </Grupo>
 </Grupos>

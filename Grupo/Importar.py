@@ -1,8 +1,3 @@
-"""
-Importar.py – Importa grupos desde archivos CSV, JSON o XML a la colección MongoDB.
-Evita duplicados por cveGru y notifica el resultado con ventanas emergentes.
-"""
-
 import csv
 import json
 import xml.etree.ElementTree as ET
@@ -17,10 +12,6 @@ def _open_dialog(title: str, filetypes: list) -> str | None:
 
 
 def _insertar_docs(collection, docs: list) -> tuple[int, int]:
-    """
-    Inserta documentos evitando duplicados por cveGru.
-    Returns (insertados, omitidos).
-    """
     insertados = omitidos = 0
     for doc in docs:
         if not collection.find_one({"cveGru": doc["cveGru"]}):
