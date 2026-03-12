@@ -1,7 +1,3 @@
-"""
-ResEliGrupo.py – Eliminar todos o Restaurar todos los grupos usando mongorestore.
-"""
-
 import subprocess
 import os
 from tkinter import messagebox, filedialog
@@ -12,58 +8,43 @@ DB_NAME = "BD_GrupoAlumno"
 
 
 def eliminar_todos(collection) -> int:
-    """Elimina todos los documentos de la colección."""
     resultado = collection.delete_many({})
     return resultado.deleted_count
 
 
 def restaurar_todos(collection=None) -> bool:
-    """
-    Pide al usuario la carpeta del backup y ejecuta mongorestore.
-    La carpeta debe contener la subcarpeta BD_GrupoAlumno generada por mongodump.
-    """
-    carpeta = filedialog.askdirectory(title="Selecciona la carpeta raíz del Backup")
+    carpeta = filedialog.askdirectory(title="Selecciona la carpeta del Backup")
     if not carpeta:
         return False
 
     carpeta = os.path.normpath(carpeta)
-    ruta_db = os.path.join(carpeta, DB_NAME)
 
-    if not os.path.exists(ruta_db):
-        messagebox.showerror(
-            "Restaurar - Error",
-            f"No se encontró la carpeta del backup:\n{ruta_db}\n\n"
-            "Asegúrate de seleccionar la carpeta raíz donde mongodump guardó el backup."
-        )
+    # Acepta tanto la carpeta raíz como BD_GrupoAlumno directamente
+    if os.path.basename(carpeta) == DB_NAME:
+        ruta_db = carpeta
+    else:
+        ruta_db = os.path.join(carpeta, DB_NAME)
+
+    bson_file = os.path.join(ruta_db, "Grupo.bson")
+
+    if not os.path.exists(bson_file):
+        messagebox.showerror("Restaurar - Error", f"No se encontró el archivo:\n{bson_file}")
         return False
 
     cmd = [
         MONGORESTORE_PATH,
-        f"--db={DB_NAME}",
-        "--collection=Grupo",
-        f"--dir={ruta_db}"
+        f"--nsInclude={DB_NAME}.Grupo",
+        bson_file
     ]
 
     try:
         resultado = subprocess.run(cmd, capture_output=True, text=True)
-
         if resultado.returncode == 0:
-            messagebox.showinfo(
-                "Restaurar",
-                f"Base de datos restaurada correctamente desde:\n{ruta_db}"
-            )
+            messagebox.showinfo("Restaurar", f"Grupos restaurados correctamente desde:\n{bson_file}")
             return True
         else:
-            messagebox.showerror(
-                "Restaurar - Error",
-                f"mongorestore falló:\n\n{resultado.stderr}"
-            )
+            messagebox.showerror("Restaurar - Error", f"mongorestore falló:\n\n{resultado.stderr}")
             return False
-
     except FileNotFoundError:
-        messagebox.showerror(
-            "Restaurar - Error",
-            f"No se encontró mongorestore en:\n{MONGORESTORE_PATH}\n\n"
-            "Verifica la ruta en ResEliGrupo.py"
-        )
+        messagebox.showerror("Restaurar - Error", f"No se encontró mongorestore en:\n{MONGORESTORE_PATH}")
         return False
