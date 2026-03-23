@@ -7,14 +7,14 @@ import re
 # Permite importar módulos desde el directorio padre del proyecto
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from Grupo.AgrGrupo import agregar_grupo
-from Grupo.ModGrupo import modificar_grupo
-from Grupo.EliGrupo import eliminar_grupo
-from Grupo.EjeBackup import ejecutar_backup
-from Grupo.ResEliGrupo import restaurar_todos, eliminar_todos
-from Grupo.Exportar import exportar_csv, exportar_json, exportar_xml
-from Grupo.Importar import importar_csv, importar_json, importar_xml
-from db.conexion import get_collection
+from Alumno.AgrAlumno    import agregar_alumno
+from Alumno.ModAlumno    import modificar_alumno
+from Alumno.EliAlumno    import eliminar_alumno
+from Alumno.EjeBackup    import ejecutar_backup
+from Alumno.ResEliAlumno import restaurar_todos, eliminar_todos
+from Alumno.Exportar     import exportar_csv, exportar_json, exportar_xml
+from Alumno.Importar     import importar_csv, importar_json, importar_xml
+from db.conexion         import get_collection
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -33,7 +33,6 @@ ACCENT_LITE = "#E1F5EE"   # Verde muy claro (fondo del título)
 DANGER      = "#E24B4A"   # Rojo (eliminar)
 DANGER_HOV  = "#A32D2D"   # Rojo oscuro al pasar el mouse
 NEUTRAL     = "#3A3A38"   # Gris oscuro (botones neutros)
-BTN_BORDER  = "#B4B2A9"   # Borde de botones
 
 INDIGO      = "#4F46E5"   # Azul índigo (modificar)
 INDIGO_HOV  = "#3730A3"
@@ -52,7 +51,6 @@ DISABLED_BG = "#F0EEEA"   # Fondo de botones deshabilitados
 # ══════════════════════════════════════════════════════════════════
 #  FUENTES
 # ══════════════════════════════════════════════════════════════════
-FONT_HEAD   = ("Segoe UI", 11, "bold")
 FONT_LABEL  = ("Segoe UI", 9)
 FONT_ENTRY  = ("Segoe UI", 10)
 FONT_BTN    = ("Segoe UI", 9)
@@ -60,13 +58,16 @@ FONT_TITLE  = ("Segoe UI", 13, "bold")
 
 # ══════════════════════════════════════════════════════════════════
 #  EXPRESIONES REGULARES PARA VALIDAR ENTRADAS
-#  VALID_CLAVE:  solo letras, números, guiones y guiones bajos,
-#                máximo 20 caracteres, sin espacios.
+#  VALID_CLAVE:  solo dígitos, máximo 10.
 #  VALID_NOMBRE: letras (con acentos y ñ), números, espacios y
 #                algunos caracteres especiales, máximo 80 caracteres.
+#  VALID_EDAD:   solo dígitos, máximo 3 (rango 1-120 se verifica aparte).
+#  VALID_GRUPO:  letras, números, guiones y guiones bajos, máximo 20.
 # ══════════════════════════════════════════════════════════════════
-VALID_CLAVE  = re.compile(r'^[A-Za-z0-9\-_]{1,20}$')
+VALID_CLAVE  = re.compile(r'^\d{1,10}$')
 VALID_NOMBRE = re.compile(r'^[A-Za-záéíóúÁÉÍÓÚñÑ0-9 \-_.,()]{1,80}$')
+VALID_EDAD   = re.compile(r'^\d{1,3}$')
+VALID_GRUPO  = re.compile(r'^[A-Za-z0-9\-_]{1,20}$')
 
 # ══════════════════════════════════════════════════════════════════
 #  RUTAS DE ARCHIVOS EXPORTADOS
@@ -77,38 +78,42 @@ VALID_NOMBRE = re.compile(r'^[A-Za-záéíóúÁÉÍÓÚñÑ0-9 \-_.,()]{1,80}$'
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _EXPORT_PATHS = {
-    "csv":  os.path.join(_BASE_DIR, "ExpImp", "Grupo.csv"),
-    "json": os.path.join(_BASE_DIR, "ExpImp", "Grupo.json"),
-    "xml":  os.path.join(_BASE_DIR, "ExpImp", "Grupo.xml"),
+    "csv":  os.path.join(_BASE_DIR, "ExpImp", "Alumno.csv"),
+    "json": os.path.join(_BASE_DIR, "ExpImp", "Alumno.json"),
+    "xml":  os.path.join(_BASE_DIR, "ExpImp", "Alumno.xml"),
 }
 
 
 # ── Funciones auxiliares de validación rápida ────────────────────
 def _clave_valida(v):  return bool(v) and bool(VALID_CLAVE.match(v))
 def _nombre_valido(v): return bool(v) and bool(VALID_NOMBRE.match(v))
+def _edad_valida(v):   return bool(v) and bool(VALID_EDAD.match(v)) and 1 <= int(v) <= 120
+def _grupo_valido(v):  return bool(v) and bool(VALID_GRUPO.match(v))
 
 
 # ══════════════════════════════════════════════════════════════════
 #  CLASE PRINCIPAL
 # ══════════════════════════════════════════════════════════════════
-class AdmonGrupo:
+class AdmonAlumno:
     def __init__(self, root):
         self.root = root
-        self.root.title("Administración de Grupos")
+        self.root.title("Administración de Alumnos")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
 
         # Conexión a las colecciones de MongoDB
-        self.collection = get_collection("BD_GrupoAlumno", "Grupo")
-        self.col_alu    = get_collection("BD_GrupoAlumno", "Alumno")  # para eliminación en cascada
+        self.col_alu = get_collection("BD_GrupoAlumno", "Alumno")
+        self.col_gru = get_collection("BD_GrupoAlumno", "Grupo")
 
         # Variables enlazadas a los campos de texto
         self.var_clave  = tk.StringVar()
         self.var_nombre = tk.StringVar()
+        self.var_edad   = tk.StringVar()
+        self.var_grupo  = tk.StringVar()
 
         # Cada vez que el usuario escribe, se re-evalúan los botones
-        self.var_clave.trace_add("write",  lambda *_: self._actualizar_botones())
-        self.var_nombre.trace_add("write", lambda *_: self._actualizar_botones())
+        for var in (self.var_clave, self.var_nombre, self.var_edad, self.var_grupo):
+            var.trace_add("write", lambda *_: self._actualizar_botones())
 
         # Diccionario de botones: { nombre: (widget, función_que_devuelve_bool) }
         # La función determina si el botón debe estar habilitado o no.
@@ -124,87 +129,89 @@ class AdmonGrupo:
         outer = tk.Frame(self.root, bg=BG, padx=20, pady=18)
         outer.pack(fill="both", expand=True)
 
-        # ── Título con contador de grupos ────────────────────────
-        title_frame = tk.Frame(outer, bg=ACCENT_LITE, padx=12, pady=8,
-                               relief="flat", bd=0)
+        # ── Título con contador de alumnos ───────────────────────
+        title_frame = tk.Frame(outer, bg=ACCENT_LITE, padx=12, pady=8)
         title_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 16))
-        tk.Label(title_frame, text="Grupos", font=FONT_TITLE,
+        tk.Label(title_frame, text="Alumnos", font=FONT_TITLE,
                  bg=ACCENT_LITE, fg=ACCENT_HOV).pack(side="left")
         self.lbl_count = tk.Label(title_frame, text="", font=FONT_LABEL,
                                   bg=ACCENT_LITE, fg=TEXT_SEC)
         self.lbl_count.pack(side="right")
         self._actualizar_contador()
 
-        # ── Tarjeta con los campos Clave y Nombre ────────────────
+        # ── Tarjeta con los campos del alumno ────────────────────
         card = tk.Frame(outer, bg=SURFACE, padx=16, pady=14,
-                        relief="solid", bd=1, highlightthickness=0)
-        card.configure(highlightbackground=BORDER)
+                        relief="solid", bd=1)
         card.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        # Campo: Clave
-        tk.Label(card, text="Clave", font=FONT_LABEL, bg=SURFACE,
-                 fg=TEXT_SEC).grid(row=0, column=0, sticky="w", pady=(0, 2))
-        entry_row = tk.Frame(card, bg=SURFACE)
-        entry_row.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-        self.entry_clave = tk.Entry(entry_row, font=FONT_ENTRY, width=22,
-                                    textvariable=self.var_clave,
-                                    bg=SURFACE, fg=TEXT_PRI,
-                                    relief="solid", bd=1,
-                                    highlightthickness=1,
-                                    highlightbackground=BORDER,
-                                    highlightcolor=ACCENT,
-                                    insertbackground=TEXT_PRI)
+        # Campo: Clave Alumno + Buscar
+        tk.Label(card, text="Clave Alumno", font=FONT_LABEL,
+                 bg=SURFACE, fg=TEXT_SEC).grid(row=0, column=0, sticky="w", pady=(0, 2))
+        row_clave = tk.Frame(card, bg=SURFACE)
+        row_clave.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        self.entry_clave = self._entry(row_clave, self.var_clave)
         self.entry_clave.pack(side="left")
-
-        btn_buscar = self._btn(entry_row, "Buscar", self.buscar,
+        btn_buscar = self._btn(row_clave, "Buscar", self.buscar,
                                color=ACCENT, hover=ACCENT_HOV)
         btn_buscar.pack(side="left", padx=(8, 0))
         # Habilitado solo si la clave ingresada es válida
         self._btns["buscar"] = (btn_buscar,
                                 lambda: _clave_valida(self.var_clave.get().strip()))
 
-        # Campo: Nombre
-        tk.Label(card, text="Nombre", font=FONT_LABEL, bg=SURFACE,
-                 fg=TEXT_SEC).grid(row=2, column=0, sticky="w", pady=(0, 2))
-        nombre_row = tk.Frame(card, bg=SURFACE)
-        nombre_row.grid(row=3, column=0, sticky="ew", pady=(0, 2))
-        self.entry_nombre = tk.Entry(nombre_row, font=FONT_ENTRY, width=22,
-                                     textvariable=self.var_nombre,
-                                     bg=SURFACE, fg=TEXT_PRI,
-                                     relief="solid", bd=1,
-                                     highlightthickness=1,
-                                     highlightbackground=BORDER,
-                                     highlightcolor=ACCENT,
-                                     insertbackground=TEXT_PRI)
+        # Campo: Nombre + Limpiar
+        tk.Label(card, text="Nombre", font=FONT_LABEL,
+                 bg=SURFACE, fg=TEXT_SEC).grid(row=2, column=0, sticky="w", pady=(0, 2))
+        row_nom = tk.Frame(card, bg=SURFACE)
+        row_nom.grid(row=3, column=0, sticky="ew", pady=(0, 10))
+        self.entry_nombre = self._entry(row_nom, self.var_nombre)
         self.entry_nombre.pack(side="left")
-
-        btn_limpiar = self._btn(nombre_row, "Limpiar", self.limpiar,
+        btn_limpiar = self._btn(row_nom, "Limpiar", self.limpiar,
                                 color=AMBER, hover=AMBER_HOV)
         btn_limpiar.pack(side="left", padx=(8, 0))
         # Habilitado si al menos uno de los campos tiene contenido
         self._btns["limpiar"] = (btn_limpiar,
-                                 lambda: bool(self.var_clave.get() or self.var_nombre.get()))
+                                 lambda: bool(self.var_clave.get() or self.var_nombre.get()
+                                              or self.var_edad.get() or self.var_grupo.get()))
+
+        # Campos: Edad y Clave Grupo en paralelo
+        row_extra = tk.Frame(card, bg=SURFACE)
+        row_extra.grid(row=4, column=0, sticky="ew", pady=(0, 4))
+
+        col_eda = tk.Frame(row_extra, bg=SURFACE)
+        col_eda.pack(side="left", padx=(0, 16))
+        tk.Label(col_eda, text="Edad", font=FONT_LABEL,
+                 bg=SURFACE, fg=TEXT_SEC).pack(anchor="w")
+        self.entry_edad = self._entry(col_eda, self.var_edad, width=8)
+        self.entry_edad.pack(anchor="w")
+
+        col_gru = tk.Frame(row_extra, bg=SURFACE)
+        col_gru.pack(side="left")
+        tk.Label(col_gru, text="Clave Grupo", font=FONT_LABEL,
+                 bg=SURFACE, fg=TEXT_SEC).pack(anchor="w")
+        self.entry_grupo = self._entry(col_gru, self.var_grupo, width=14)
+        self.entry_grupo.pack(anchor="w")
 
         # ── Botones CRUD ─────────────────────────────────────────
         crud = tk.Frame(outer, bg=BG)
         crud.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         crud.columnconfigure((0, 1, 2), weight=1)
 
+        # Agregar y Modificar requieren los 4 campos válidos
+        def _campos_completos():
+            return (_clave_valida(self.var_clave.get().strip()) and
+                    _nombre_valido(self.var_nombre.get().strip()) and
+                    _edad_valida(self.var_edad.get().strip()) and
+                    _grupo_valido(self.var_grupo.get().strip()))
+
         btn_agregar = self._btn(crud, "Agregar", self.agregar,
                                 color=ACCENT, hover=ACCENT_HOV)
         btn_agregar.grid(row=0, column=0, padx=(0, 5), sticky="ew")
-        # Requiere clave Y nombre válidos
-        self._btns["agregar"] = (btn_agregar,
-                                 lambda: (_clave_valida(self.var_clave.get().strip()) and
-                                          _nombre_valido(self.var_nombre.get().strip())))
+        self._btns["agregar"] = (btn_agregar, _campos_completos)
 
         btn_modificar = self._btn(crud, "Modificar", self.modificar,
                                   color=INDIGO, hover=INDIGO_HOV)
         btn_modificar.grid(row=0, column=1, padx=5, sticky="ew")
-        # Requiere clave Y nombre válidos
-        self._btns["modificar"] = (btn_modificar,
-                                   lambda: (_clave_valida(self.var_clave.get().strip()) and
-                                            _nombre_valido(self.var_nombre.get().strip())))
+        self._btns["modificar"] = (btn_modificar, _campos_completos)
 
         btn_eliminar = self._btn(crud, "Eliminar", self.eliminar,
                                  color=DANGER, hover=DANGER_HOV)
@@ -275,18 +282,18 @@ class AdmonGrupo:
         ops.columnconfigure(0, weight=1)
 
         btn_backup = self._btn(ops, "Ejecutar Backup",
-                               lambda: self._backup_con_validacion(),
+                               self._backup_con_validacion,
                                color="#185FA5", hover="#0C447C")
         btn_backup.grid(row=0, column=0, sticky="ew", pady=(0, 6))
         self._btns["backup"] = (btn_backup, self._hay_datos)
 
-        btn_eli_todos = self._btn(ops, "Eliminar todos los Grupos",
+        btn_eli_todos = self._btn(ops, "Eliminar todos los Alumnos",
                                   self.eliminar_todos,
                                   color=DANGER, hover=DANGER_HOV)
         btn_eli_todos.grid(row=1, column=0, sticky="ew", pady=(0, 6))
         self._btns["eli_todos"] = (btn_eli_todos, self._hay_datos)
 
-        btn_restaurar = self._btn(ops, "Restaurar todos los Grupos",
+        btn_restaurar = self._btn(ops, "Restaurar todos los Alumnos",
                                   self.restaurar_todos,
                                   color=BURNT, hover=BURNT_HOV)
         btn_restaurar.grid(row=2, column=0, sticky="ew")
@@ -315,51 +322,26 @@ class AdmonGrupo:
         return bool(ruta) and os.path.isfile(ruta)
 
     # ══════════════════════════════════════════════════════════════
-    #  ESTADO DE BOTONES
-    # ══════════════════════════════════════════════════════════════
-    def _hay_datos(self) -> bool:
-        """Retorna True si la colección tiene al menos un documento."""
-        try:
-            return self.collection.count_documents({}) > 0
-        except Exception:
-            return False
-
-    def _actualizar_botones(self):
-        """
-        Recorre todos los botones registrados en self._btns y
-        habilita o deshabilita cada uno según su regla asociada.
-        Se llama automáticamente al escribir en los campos y
-        después de cada operación CRUD / exportar / importar.
-        """
-        for key, (widget, regla) in self._btns.items():
-            habilitado = regla()
-            self._set_btn_state(widget, habilitado, key)
-
-    def _set_btn_state(self, btn, habilitado: bool, key: str = ""):
-        """Aplica visualmente el estado habilitado/deshabilitado a un botón."""
-        if habilitado:
-            btn.configure(state="normal", cursor="hand2",
-                          bg=btn._bg_normal if hasattr(btn, "_bg_normal") else btn.cget("bg"),
-                          fg=btn._fg_normal if hasattr(btn, "_fg_normal") else btn.cget("fg"))
-        else:
-            if not hasattr(btn, "_fg_normal"):
-                btn._fg_normal = btn.cget("fg")
-                btn._bg_normal = btn.cget("bg")
-            btn.configure(state="disabled", cursor="",
-                          fg=DISABLED_FG, bg=DISABLED_BG,
-                          disabledforeground=DISABLED_FG)
-
-    # ══════════════════════════════════════════════════════════════
     #  HELPERS DE WIDGETS
     # ══════════════════════════════════════════════════════════════
-    def _btn(self, parent, text, command, color=NEUTRAL, hover="#111110", fill=False):
+    def _entry(self, parent, textvariable, width=22):
+        """Crea y retorna un campo de texto con estilo consistente."""
+        return tk.Entry(parent, font=FONT_ENTRY, width=width,
+                        textvariable=textvariable,
+                        bg=SURFACE, fg=TEXT_PRI,
+                        relief="solid", bd=1,
+                        highlightthickness=1,
+                        highlightbackground=BORDER,
+                        highlightcolor=ACCENT,
+                        insertbackground=TEXT_PRI)
+
+    def _btn(self, parent, text, command, color=NEUTRAL, hover="#111110"):
         """
         Crea y retorna un botón con estilo consistente.
         Incluye efectos hover (cambio de color al pasar el mouse).
         """
-        bg_base = SURFACE
         btn = tk.Button(parent, text=text, font=FONT_BTN,
-                        fg=color, bg=bg_base,
+                        fg=color, bg=SURFACE,
                         activeforeground=hover,
                         activebackground=BORDER,
                         disabledforeground=DISABLED_FG,
@@ -369,7 +351,7 @@ class AdmonGrupo:
                         pady=5, padx=10,
                         command=command)
         btn._fg_normal = color
-        btn._bg_normal = bg_base
+        btn._bg_normal = SURFACE
 
         def on_enter(e):
             if btn["state"] == "normal":
@@ -385,14 +367,47 @@ class AdmonGrupo:
 
     def _sep(self, parent, row):
         """Dibuja una línea horizontal separadora."""
-        sep = tk.Frame(parent, height=1, bg=BORDER)
-        sep.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+        tk.Frame(parent, height=1, bg=BORDER).grid(
+            row=row, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+
+    # ══════════════════════════════════════════════════════════════
+    #  ESTADO DE BOTONES
+    # ══════════════════════════════════════════════════════════════
+    def _hay_datos(self) -> bool:
+        """Retorna True si la colección tiene al menos un documento."""
+        try:
+            return self.col_alu.count_documents({}) > 0
+        except Exception:
+            return False
+
+    def _actualizar_botones(self):
+        """
+        Recorre todos los botones registrados en self._btns y
+        habilita o deshabilita cada uno según su regla asociada.
+        Se llama automáticamente al escribir en los campos y
+        después de cada operación CRUD / exportar / importar.
+        """
+        for key, (widget, regla) in self._btns.items():
+            self._set_btn_state(widget, regla())
+
+    def _set_btn_state(self, btn, habilitado: bool):
+        """Aplica visualmente el estado habilitado/deshabilitado a un botón."""
+        if habilitado:
+            btn.configure(state="normal", cursor="hand2",
+                          fg=btn._fg_normal, bg=btn._bg_normal)
+        else:
+            if not hasattr(btn, "_fg_normal"):
+                btn._fg_normal = btn.cget("fg")
+                btn._bg_normal = btn.cget("bg")
+            btn.configure(state="disabled", cursor="",
+                          fg=DISABLED_FG, bg=DISABLED_BG,
+                          disabledforeground=DISABLED_FG)
 
     def _actualizar_contador(self):
-        """Actualiza el texto del contador de grupos en el título."""
+        """Actualiza el texto del contador de alumnos en el título."""
         try:
-            n = self.collection.count_documents({})
-            self.lbl_count.configure(text=f"{n} grupo{'s' if n != 1 else ''}")
+            n = self.col_alu.count_documents({})
+            self.lbl_count.configure(text=f"{n} alumno{'s' if n != 1 else ''}")
         except Exception:
             self.lbl_count.configure(text="")
 
@@ -421,7 +436,7 @@ class AdmonGrupo:
             )
 
     def _refrescar(self):
-        """Actualiza el contador y el estado de todos los botones."""
+        """Actualiza el contador, el label de importar y el estado de todos los botones."""
         self._actualizar_contador()
         self._actualizar_label_importar()
         self._actualizar_botones()
@@ -430,28 +445,22 @@ class AdmonGrupo:
     #  VALIDACIONES DE ENTRADA
     # ══════════════════════════════════════════════════════════════
     def _validar_clave(self, clave: str) -> bool:
-        """
-        Valida que la clave cumpla con el formato requerido.
-        Muestra un mensaje de advertencia si no es válida.
-        """
+        """Valida que la clave sea un número entero positivo de máximo 10 dígitos."""
         if not clave:
-            messagebox.showwarning("Validación", "La Clave no puede estar vacía.")
+            messagebox.showwarning("Validación", "La Clave del alumno no puede estar vacía.")
             return False
         if not VALID_CLAVE.match(clave):
             messagebox.showwarning(
                 "Validación",
-                "La Clave solo puede contener letras, números, guiones y guiones\n"
-                "bajos, sin espacios, y un máximo de 20 caracteres.\n\n"
+                "La Clave del alumno debe ser un número entero positivo "
+                "(máximo 10 dígitos).\n\n"
                 f"Valor ingresado: '{clave}'"
             )
             return False
         return True
 
     def _validar_nombre(self, nombre: str) -> bool:
-        """
-        Valida que el nombre cumpla con el formato requerido.
-        Muestra un mensaje de advertencia si no es válido.
-        """
+        """Valida que el nombre cumpla con el formato requerido."""
         if not nombre:
             messagebox.showwarning("Validación", "El Nombre no puede estar vacío.")
             return False
@@ -466,21 +475,46 @@ class AdmonGrupo:
             return False
         return True
 
+    def _validar_edad(self, edad: str) -> bool:
+        """Valida que la edad sea un número entero entre 1 y 120."""
+        if not edad:
+            messagebox.showwarning("Validación", "La Edad no puede estar vacía.")
+            return False
+        if not VALID_EDAD.match(edad) or not (1 <= int(edad) <= 120):
+            messagebox.showwarning(
+                "Validación",
+                "La Edad debe ser un número entero entre 1 y 120.\n\n"
+                f"Valor ingresado: '{edad}'"
+            )
+            return False
+        return True
+
+    def _validar_grupo(self, cve_gru: str) -> bool:
+        """Valida que la clave de grupo cumpla con el formato requerido."""
+        if not cve_gru:
+            messagebox.showwarning("Validación", "La Clave del Grupo no puede estar vacía.")
+            return False
+        if not VALID_GRUPO.match(cve_gru):
+            messagebox.showwarning(
+                "Validación",
+                "La Clave del Grupo solo puede contener letras, números, guiones\n"
+                "y guiones bajos, sin espacios, máximo 20 caracteres.\n\n"
+                f"Valor ingresado: '{cve_gru}'"
+            )
+            return False
+        return True
+
     # ══════════════════════════════════════════════════════════════
     #  HELPERS DE CAMPOS
     # ══════════════════════════════════════════════════════════════
-    def _get_clave(self):
-        """Retorna el valor del campo Clave sin espacios al inicio/fin."""
-        return self.var_clave.get().strip()
-
-    def _get_nombre(self):
-        """Retorna el valor del campo Nombre sin espacios al inicio/fin."""
-        return self.var_nombre.get().strip()
+    def _get(self, var):
+        """Retorna el valor de una variable sin espacios al inicio/fin."""
+        return var.get().strip()
 
     def limpiar(self):
-        """Limpia ambos campos y devuelve el foco al campo Clave."""
-        self.var_clave.set("")
-        self.var_nombre.set("")
+        """Limpia todos los campos y devuelve el foco al campo Clave."""
+        for v in (self.var_clave, self.var_nombre, self.var_edad, self.var_grupo):
+            v.set("")
         self.entry_clave.focus()
 
     # ══════════════════════════════════════════════════════════════
@@ -498,7 +532,7 @@ class AdmonGrupo:
             fmt:         Formato exportado ('csv', 'json' o 'xml').
             fn_exportar: Función que realiza la exportación.
         """
-        fn_exportar(self.collection)
+        fn_exportar(self.col_alu)
         self._refrescar()
 
     def _importar_y_refrescar(self, fn_importar):
@@ -508,138 +542,149 @@ class AdmonGrupo:
         Args:
             fn_importar: Función que realiza la importación.
         """
-        fn_importar(self.collection)
+        fn_importar(self.col_alu, self.col_gru)
         self._refrescar()
 
     # ══════════════════════════════════════════════════════════════
     #  OPERACIONES CRUD
     # ══════════════════════════════════════════════════════════════
     def buscar(self):
-        """Busca un grupo por clave y muestra sus datos en los campos."""
-        clave = self._get_clave()
+        """Busca un alumno por clave y muestra sus datos en los campos."""
+        clave = self._get(self.var_clave)
         if not self._validar_clave(clave):
             return
-        doc = self.collection.find_one({"cveGru": clave})
+        doc = self.col_alu.find_one({"cveAlu": int(clave)})
         if doc:
-            self.var_nombre.set(doc["nomGru"])
-            messagebox.showinfo("Buscar",
-                f"Grupo encontrado:\nClave: {doc['cveGru']}\nNombre: {doc['nomGru']}")
+            self.var_nombre.set(doc["nomAlu"])
+            self.var_edad.set(str(doc["edaAlu"]))
+            self.var_grupo.set(doc["cveGru"])
+            messagebox.showinfo(
+                "Buscar",
+                f"Alumno encontrado:\n"
+                f"Clave:  {doc['cveAlu']}\n"
+                f"Nombre: {doc['nomAlu']}\n"
+                f"Edad:   {doc['edaAlu']}\n"
+                f"Grupo:  {doc['cveGru']}"
+            )
         else:
             messagebox.showwarning("Buscar",
-                f"No se encontró ningún grupo con clave '{clave}'.")
+                f"No se encontró ningún alumno con clave '{clave}'.")
 
     def agregar(self):
-        """Agrega un nuevo grupo. Verifica que la clave no exista previamente."""
-        clave  = self._get_clave()
-        nombre = self._get_nombre()
+        """Agrega un nuevo alumno. Verifica que la clave no exista y que el grupo sí."""
+        clave  = self._get(self.var_clave)
+        nombre = self._get(self.var_nombre)
+        edad   = self._get(self.var_edad)
+        grupo  = self._get(self.var_grupo)
+
         if not self._validar_clave(clave):   return
         if not self._validar_nombre(nombre): return
-        if self.collection.find_one({"cveGru": clave}):
-            messagebox.showwarning("Agregar",
-                f"El grupo con clave '{clave}' ya se encuentra registrado.")
-            return
-        if agregar_grupo(self.collection, clave, nombre):
-            messagebox.showinfo("Agregar", f"Grupo '{clave}' agregado correctamente.")
+        if not self._validar_edad(edad):     return
+        if not self._validar_grupo(grupo):   return
+
+        resultado = agregar_alumno(
+            self.col_alu, self.col_gru,
+            int(clave), nombre, int(edad), grupo
+        )
+
+        if resultado == "ok":
+            messagebox.showinfo("Agregar",
+                f"Alumno '{clave}' agregado correctamente.")
             self.limpiar()
             self._refrescar()
+        elif resultado == "duplicado":
+            messagebox.showwarning("Agregar",
+                f"El alumno con clave '{clave}' ya se encuentra registrado.")
+        elif resultado == "grupo":
+            messagebox.showwarning("Agregar",
+                f"El grupo '{grupo}' no existe.\n"
+                "Registra primero el grupo antes de asignar alumnos.")
         else:
-            messagebox.showerror("Agregar", "Ocurrió un error al intentar agregar el grupo.")
+            messagebox.showerror("Agregar",
+                "Ocurrió un error al intentar agregar el alumno.")
 
     def modificar(self):
-        """Modifica el nombre de un grupo existente."""
-        clave  = self._get_clave()
-        nombre = self._get_nombre()
+        """Modifica los datos de un alumno existente."""
+        clave  = self._get(self.var_clave)
+        nombre = self._get(self.var_nombre)
+        edad   = self._get(self.var_edad)
+        grupo  = self._get(self.var_grupo)
+
         if not self._validar_clave(clave):   return
         if not self._validar_nombre(nombre): return
-        if not self.collection.find_one({"cveGru": clave}):
+        if not self._validar_edad(edad):     return
+        if not self._validar_grupo(grupo):   return
+
+        if not self.col_alu.find_one({"cveAlu": int(clave)}):
             messagebox.showwarning("Modificar",
-                f"No se puede modificar. El grupo con clave '{clave}' no existe.")
+                f"No se puede modificar. El alumno con clave '{clave}' no existe.")
             return
-        if modificar_grupo(self.collection, clave, nombre):
-            messagebox.showinfo("Modificar", f"Grupo '{clave}' modificado correctamente.")
+
+        resultado = modificar_alumno(
+            self.col_alu, self.col_gru,
+            int(clave), nombre, int(edad), grupo
+        )
+
+        if resultado == "ok":
+            messagebox.showinfo("Modificar", "Alumno actualizado correctamente.")
             self.limpiar()
+            self._refrescar()
+        elif resultado == "grupo":
+            messagebox.showwarning("Modificar",
+                f"El grupo '{grupo}' no existe.\n"
+                "Solo puedes asignar grupos ya registrados.")
         else:
             messagebox.showerror("Modificar",
                 "No se detectaron cambios o ocurrió un error al modificar.")
 
     def eliminar(self):
         """
-        Elimina un grupo y en cascada todos sus alumnos vinculados.
+        Elimina un alumno por clave.
         Solicita confirmación al usuario antes de proceder.
         """
-        clave = self._get_clave()
-        if not self._validar_clave(clave): return
-
-        if not self.collection.find_one({"cveGru": clave}):
+        clave = self._get(self.var_clave)
+        if not self._validar_clave(clave):
+            return
+        if not self.col_alu.find_one({"cveAlu": int(clave)}):
             messagebox.showwarning("Eliminar",
-                f"No se puede eliminar. El grupo con clave '{clave}' no existe.")
+                f"No se puede eliminar. El alumno con clave '{clave}' no existe.")
             return
-
-        # Cuenta los alumnos vinculados para informar al usuario
-        n_alu = self.col_alu.count_documents({"cveGru": clave})
-        msg = f"¿Desea eliminar definitivamente el grupo '{clave}'?"
-        if n_alu > 0:
-            msg += (f"\n\n⚠ Se eliminarán también {n_alu} "
-                    f"alumno{'s' if n_alu != 1 else ''} vinculado{'s' if n_alu != 1 else ''} "
-                    f"a este grupo.")
-
-        if not messagebox.askyesno("Eliminar", msg):
-            return
-
-        # Eliminación en cascada: primero alumnos, luego el grupo
-        if n_alu > 0:
-            self.col_alu.delete_many({"cveGru": clave})
-
-        if eliminar_grupo(self.collection, clave):
-            detalle = f"Grupo '{clave}' eliminado correctamente."
-            if n_alu > 0:
-                detalle += (f"\n{n_alu} alumno{'s' if n_alu != 1 else ''} "
-                            f"eliminado{'s' if n_alu != 1 else ''} en cascada.")
-            messagebox.showinfo("Eliminar", detalle)
-            self.limpiar()
-            self._refrescar()
-        else:
-            messagebox.showerror("Eliminar",
-                "Ocurrió un error interno al intentar eliminar el grupo.")
+        if messagebox.askyesno("Eliminar",
+                f"¿Desea eliminar definitivamente al alumno con clave '{clave}'?"):
+            if eliminar_alumno(self.col_alu, int(clave)):
+                messagebox.showinfo("Eliminar",
+                    f"Alumno '{clave}' eliminado correctamente.")
+                self.limpiar()
+                self._refrescar()
+            else:
+                messagebox.showerror("Eliminar",
+                    "Ocurrió un error interno al intentar eliminar el alumno.")
 
     def eliminar_todos(self):
         """
-        Elimina todos los grupos y en cascada todos los alumnos.
-        Solicita confirmación doble al usuario por ser una operación irreversible.
+        Elimina todos los alumnos de la colección.
+        Solicita confirmación al usuario por ser una operación irreversible.
         """
-        n_gru = self.collection.count_documents({})
-        if n_gru == 0:
-            messagebox.showwarning("Eliminar todos", "No hay grupos para eliminar.")
+        n = self.col_alu.count_documents({})
+        if n == 0:
+            messagebox.showwarning("Eliminar todos", "No hay alumnos para eliminar.")
             return
-
-        n_alu = self.col_alu.count_documents({})
-        msg = (f"¿Está seguro de eliminar los {n_gru} grupos?\n"
-               "Esta acción no se puede deshacer.")
-        if n_alu > 0:
-            msg += f"\n\n⚠ Se eliminarán también TODOS los alumnos ({n_alu})."
-
-        if not messagebox.askyesno("Eliminar todos", msg):
-            return
-
-        # Cascada total: primero todos los alumnos, luego todos los grupos
-        if n_alu > 0:
-            self.col_alu.delete_many({})
-
-        eliminar_todos(self.collection)
-        detalle = "Todos los grupos han sido eliminados."
-        if n_alu > 0:
-            detalle += (f"\n{n_alu} alumno{'s' if n_alu != 1 else ''} "
-                        f"eliminado{'s' if n_alu != 1 else ''} en cascada.")
-        messagebox.showinfo("Eliminar todos", detalle)
-        self._refrescar()
+        if messagebox.askyesno("Eliminar todos",
+                f"¿Está seguro de eliminar los {n} alumnos?\n"
+                "Esta acción no se puede deshacer."):
+            eliminar_todos(self.col_alu)
+            messagebox.showinfo("Eliminar todos",
+                "Todos los alumnos han sido eliminados.")
+            self._refrescar()
 
     def restaurar_todos(self):
-        """Restaura todos los grupos desde el archivo de backup."""
+        """Restaura todos los alumnos desde el archivo de backup."""
         if messagebox.askyesno("Restaurar todos",
-                "¿Desea restaurar todos los grupos desde el backup?"):
-            ok = restaurar_todos(self.collection)
+                "¿Desea restaurar todos los alumnos desde el backup?"):
+            ok = restaurar_todos(self.col_alu)
             if ok:
-                messagebox.showinfo("Restaurar todos", "Grupos restaurados correctamente.")
+                messagebox.showinfo("Restaurar todos",
+                    "Alumnos restaurados correctamente.")
                 self._refrescar()
             else:
                 messagebox.showerror("Restaurar todos",
@@ -650,13 +695,13 @@ class AdmonGrupo:
         Ejecuta el backup solo si hay datos en la colección.
         Muestra advertencia si la colección está vacía.
         """
-        n = self.collection.count_documents({})
+        n = self.col_alu.count_documents({})
         if n == 0:
             messagebox.showwarning("Ejecutar Backup",
                 "No hay datos en la colección.\n"
-                "El backup solo puede realizarse cuando existan grupos registrados.")
+                "El backup solo puede realizarse cuando existan alumnos registrados.")
             return
-        ejecutar_backup(self.collection)
+        ejecutar_backup(self.col_alu)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -664,5 +709,5 @@ class AdmonGrupo:
 # ══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     root = tk.Tk()
-    app = AdmonGrupo(root)
+    app = AdmonAlumno(root)
     root.mainloop()

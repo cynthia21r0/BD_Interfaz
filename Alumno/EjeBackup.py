@@ -2,13 +2,15 @@ import subprocess
 import os
 from tkinter import messagebox, filedialog
 
+
 MONGODUMP_PATH = r"C:\Program Files\MongoDB\Tools\100\bin\mongodump.exe"
 DB_NAME = "BD_GrupoAlumno"
 
 
 def ejecutar_backup(collection=None) -> None:
     """
-    Pide al usuario la carpeta destino y ejecuta mongodump.
+    Pide al usuario la carpeta destino y ejecuta mongodump
+    para respaldar la base de datos completa (incluye Alumno).
     """
     carpeta = filedialog.askdirectory(title="Selecciona carpeta destino del Backup")
     if not carpeta:
