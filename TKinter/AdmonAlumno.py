@@ -16,12 +16,7 @@ from Alumno.Exportar     import exportar_csv, exportar_json, exportar_xml
 from Alumno.Importar     import importar_csv, importar_json, importar_xml
 from db.conexion         import get_collection
 
-
-# ══════════════════════════════════════════════════════════════════
-#  PALETA DE COLORES
-#  Todos los colores de la interfaz están centralizados aquí.
-#  Si quieres cambiar algún color, solo modifica esta sección.
-# ══════════════════════════════════════════════════════════════════
+# Colores
 BG          = "#F7F6F3"   # Fondo general de la ventana
 SURFACE     = "#FFFFFF"   # Fondo de tarjetas y entradas
 BORDER      = "#E2DFD8"   # Color de bordes
@@ -48,33 +43,24 @@ BURNT_HOV   = "#9A3412"
 DISABLED_FG = "#C0BDB8"   # Texto de botones deshabilitados
 DISABLED_BG = "#F0EEEA"   # Fondo de botones deshabilitados
 
-# ══════════════════════════════════════════════════════════════════
-#  FUENTES
-# ══════════════════════════════════════════════════════════════════
+# Fuentes
 FONT_LABEL  = ("Segoe UI", 9)
 FONT_ENTRY  = ("Segoe UI", 10)
 FONT_BTN    = ("Segoe UI", 9)
 FONT_TITLE  = ("Segoe UI", 13, "bold")
 
-# ══════════════════════════════════════════════════════════════════
-#  EXPRESIONES REGULARES PARA VALIDAR ENTRADAS
-#  VALID_CLAVE:  solo dígitos, máximo 10.
+#  Validaciones de entradas
+#  VALID_CLAVE:  solo dígitos, máximo 10
 #  VALID_NOMBRE: letras (con acentos y ñ), números, espacios y
-#                algunos caracteres especiales, máximo 80 caracteres.
-#  VALID_EDAD:   solo dígitos, máximo 3 (rango 1-120 se verifica aparte).
-#  VALID_GRUPO:  letras, números, guiones y guiones bajos, máximo 20.
-# ══════════════════════════════════════════════════════════════════
+#                algunos caracteres especiales, máximo 80 caracteres
+#  VALID_EDAD:   solo dígitos, máximo 3 (rango 1-120 se verifica aparte)
+#  VALID_GRUPO:  letras, números, guiones y guiones bajos, máximo 20
 VALID_CLAVE  = re.compile(r'^\d{1,10}$')
 VALID_NOMBRE = re.compile(r'^[A-Za-záéíóúÁÉÍÓÚñÑ0-9 \-_.,()]{1,80}$')
 VALID_EDAD   = re.compile(r'^\d{1,3}$')
 VALID_GRUPO  = re.compile(r'^[A-Za-z0-9\-_]{1,20}$')
 
-# ══════════════════════════════════════════════════════════════════
-#  RUTAS DE ARCHIVOS EXPORTADOS
-#  Apuntan a la carpeta ExpImp en la raíz del proyecto.
-#  Se usan para verificar si el archivo existe físicamente en disco
-#  antes de habilitar el botón de importar correspondiente.
-# ══════════════════════════════════════════════════════════════════
+# Rutas de archivos importados
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _EXPORT_PATHS = {
@@ -83,17 +69,13 @@ _EXPORT_PATHS = {
     "xml":  os.path.join(_BASE_DIR, "ExpImp", "Alumno.xml"),
 }
 
-
-# ── Funciones auxiliares de validación rápida ────────────────────
+# Funciones auxiliares de validación rápida
 def _clave_valida(v):  return bool(v) and bool(VALID_CLAVE.match(v))
 def _nombre_valido(v): return bool(v) and bool(VALID_NOMBRE.match(v))
 def _edad_valida(v):   return bool(v) and bool(VALID_EDAD.match(v)) and 1 <= int(v) <= 120
 def _grupo_valido(v):  return bool(v) and bool(VALID_GRUPO.match(v))
 
-
-# ══════════════════════════════════════════════════════════════════
 #  CLASE PRINCIPAL
-# ══════════════════════════════════════════════════════════════════
 class AdmonAlumno:
     def __init__(self, root):
         self.root = root
@@ -122,14 +104,12 @@ class AdmonAlumno:
         self._build_ui()
         self._actualizar_botones()
 
-    # ══════════════════════════════════════════════════════════════
     #  CONSTRUCCIÓN DE LA INTERFAZ
-    # ══════════════════════════════════════════════════════════════
     def _build_ui(self):
         outer = tk.Frame(self.root, bg=BG, padx=20, pady=18)
         outer.pack(fill="both", expand=True)
 
-        # ── Título con contador de alumnos ───────────────────────
+        # Título con contador de alumnos
         title_frame = tk.Frame(outer, bg=ACCENT_LITE, padx=12, pady=8)
         title_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 16))
         tk.Label(title_frame, text="Alumnos", font=FONT_TITLE,
@@ -139,7 +119,7 @@ class AdmonAlumno:
         self.lbl_count.pack(side="right")
         self._actualizar_contador()
 
-        # ── Tarjeta con los campos del alumno ────────────────────
+        # Tarjeta con los campos del alumno
         card = tk.Frame(outer, bg=SURFACE, padx=16, pady=14,
                         relief="solid", bd=1)
         card.grid(row=1, column=0, columnspan=2, sticky="ew")
@@ -191,7 +171,7 @@ class AdmonAlumno:
         self.entry_grupo = self._entry(col_gru, self.var_grupo, width=14)
         self.entry_grupo.pack(anchor="w")
 
-        # ── Botones CRUD ─────────────────────────────────────────
+        # Botones CRUD
         crud = tk.Frame(outer, bg=BG)
         crud.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         crud.columnconfigure((0, 1, 2), weight=1)
@@ -220,10 +200,10 @@ class AdmonAlumno:
         self._btns["eliminar"] = (btn_eliminar,
                                   lambda: _clave_valida(self.var_clave.get().strip()))
 
-        # ── Separador visual ─────────────────────────────────────
+        # Separador visual
         self._sep(outer, row=3)
 
-        # ── Sección EXPORTAR ─────────────────────────────────────
+        # Sección EXPORTAR
         tk.Label(outer, text="EXPORTAR", font=("Segoe UI", 8),
                  bg=BG, fg=TEXT_SEC).grid(row=4, column=0, sticky="w", pady=(10, 4))
         exp_frame = tk.Frame(outer, bg=BG)
@@ -242,7 +222,7 @@ class AdmonAlumno:
             # Habilitado solo si hay datos en la colección
             self._btns[f"exp_{lbl.lower()}"] = (b, self._hay_datos)
 
-        # ── Sección IMPORTAR ─────────────────────────────────────
+        # Sección IMPORTAR
         # El label muestra dinámicamente qué formatos están disponibles
         self.lbl_importar = tk.Label(outer, font=("Segoe UI", 8), bg=BG)
         self.lbl_importar.grid(row=6, column=0, columnspan=2, sticky="w", pady=(12, 4))
@@ -261,22 +241,16 @@ class AdmonAlumno:
             b = self._btn(imp_frame, lbl, fn, color=CYAN, hover=CYAN_HOV)
             b.grid(row=0, column=i,
                    padx=(0 if i == 0 else 5, 5 if i < 2 else 0), sticky="ew")
-            # ─────────────────────────────────────────────────────
-            # CAMBIO CLAVE: en vez de revisar un flag en memoria,
-            # verificamos si el archivo físico existe en disco.
-            # Así, si el usuario borra el archivo, el botón se
-            # deshabilita automáticamente en la próxima actualización.
-            # ─────────────────────────────────────────────────────
             fmt_capturado = fmt
             self._btns[f"imp_{lbl.lower()}"] = (
                 b,
                 lambda f=fmt_capturado: self._archivo_existe(f)
             )
 
-        # ── Separador visual ─────────────────────────────────────
+        # Separador visual
         self._sep(outer, row=8)
 
-        # ── Sección BACKUP / RESTAURAR / ELIMINAR TODOS ──────────
+        # Sección BACKUP / RESTAURAR / ELIMINAR TODOS
         ops = tk.Frame(outer, bg=BG)
         ops.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         ops.columnconfigure(0, weight=1)
@@ -300,30 +274,12 @@ class AdmonAlumno:
 
         outer.columnconfigure(0, weight=1)
 
-    # ══════════════════════════════════════════════════════════════
     #  VERIFICACIÓN DE ARCHIVOS EN DISCO
-    # ══════════════════════════════════════════════════════════════
     def _archivo_existe(self, fmt: str) -> bool:
-        """
-        Verifica si el archivo exportado del formato indicado
-        existe físicamente en la carpeta ExpImp.
-
-        Esto permite que los botones de importar se deshabiliten
-        automáticamente si el usuario borra el archivo manualmente,
-        sin necesidad de reiniciar la aplicación.
-
-        Args:
-            fmt: Formato a verificar. Puede ser 'csv', 'json' o 'xml'.
-
-        Returns:
-            True si el archivo existe, False si no.
-        """
         ruta = _EXPORT_PATHS.get(fmt, "")
         return bool(ruta) and os.path.isfile(ruta)
 
-    # ══════════════════════════════════════════════════════════════
     #  HELPERS DE WIDGETS
-    # ══════════════════════════════════════════════════════════════
     def _entry(self, parent, textvariable, width=22):
         """Crea y retorna un campo de texto con estilo consistente."""
         return tk.Entry(parent, font=FONT_ENTRY, width=width,
@@ -370,11 +326,8 @@ class AdmonAlumno:
         tk.Frame(parent, height=1, bg=BORDER).grid(
             row=row, column=0, columnspan=2, sticky="ew", pady=(12, 0))
 
-    # ══════════════════════════════════════════════════════════════
     #  ESTADO DE BOTONES
-    # ══════════════════════════════════════════════════════════════
     def _hay_datos(self) -> bool:
-        """Retorna True si la colección tiene al menos un documento."""
         try:
             return self.col_alu.count_documents({}) > 0
         except Exception:
@@ -412,11 +365,6 @@ class AdmonAlumno:
             self.lbl_count.configure(text="")
 
     def _actualizar_label_importar(self):
-        """
-        Actualiza el label de la sección IMPORTAR para indicar
-        visualmente qué formatos están disponibles para importar,
-        verificando la existencia real de los archivos en disco.
-        """
         disponibles = [fmt.upper() for fmt in _EXPORT_PATHS if self._archivo_existe(fmt)]
 
         if not disponibles:
@@ -441,9 +389,7 @@ class AdmonAlumno:
         self._actualizar_label_importar()
         self._actualizar_botones()
 
-    # ══════════════════════════════════════════════════════════════
     #  VALIDACIONES DE ENTRADA
-    # ══════════════════════════════════════════════════════════════
     def _validar_clave(self, clave: str) -> bool:
         """Valida que la clave sea un número entero positivo de máximo 10 dígitos."""
         if not clave:
@@ -504,9 +450,7 @@ class AdmonAlumno:
             return False
         return True
 
-    # ══════════════════════════════════════════════════════════════
     #  HELPERS DE CAMPOS
-    # ══════════════════════════════════════════════════════════════
     def _get(self, var):
         """Retorna el valor de una variable sin espacios al inicio/fin."""
         return var.get().strip()
@@ -517,37 +461,16 @@ class AdmonAlumno:
             v.set("")
         self.entry_clave.focus()
 
-    # ══════════════════════════════════════════════════════════════
     #  EXPORTAR / IMPORTAR
-    # ══════════════════════════════════════════════════════════════
     def _exportar_y_refrescar(self, fmt: str, fn_exportar):
-        """
-        Ejecuta la función de exportación y luego refresca la
-        interfaz para reflejar el nuevo estado de los archivos en disco.
-
-        No se necesita guardar ningún flag en memoria porque
-        _archivo_existe() verifica el disco directamente.
-
-        Args:
-            fmt:         Formato exportado ('csv', 'json' o 'xml').
-            fn_exportar: Función que realiza la exportación.
-        """
         fn_exportar(self.col_alu)
         self._refrescar()
 
     def _importar_y_refrescar(self, fn_importar):
-        """
-        Ejecuta la función de importación y refresca la interfaz.
-
-        Args:
-            fn_importar: Función que realiza la importación.
-        """
         fn_importar(self.col_alu, self.col_gru)
         self._refrescar()
 
-    # ══════════════════════════════════════════════════════════════
     #  OPERACIONES CRUD
-    # ══════════════════════════════════════════════════════════════
     def buscar(self):
         """Busca un alumno por clave y muestra sus datos en los campos."""
         clave = self._get(self.var_clave)
@@ -703,10 +626,6 @@ class AdmonAlumno:
             return
         ejecutar_backup(self.col_alu)
 
-
-# ══════════════════════════════════════════════════════════════════
-#  PUNTO DE ENTRADA
-# ══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     root = tk.Tk()
     app = AdmonAlumno(root)
